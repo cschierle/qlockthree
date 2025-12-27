@@ -231,6 +231,7 @@
 #include "IRTranslatorSparkfun.h"
 #include "IRTranslatorMooncandles.h"
 #include "IRTranslatorLunartec.h"
+#include "MyIRremote.h"
 #include "MyRTC.h"
 #include "MyDCF77.h"
 #include "Button.h"
@@ -249,17 +250,24 @@
 
 #define FIRMWARE_VERSION "V 3.4.9b4 vom 17.04.2016"
 
+// csc uncomment SETCOMPILETIME to set compile time as current time on startup
+//#define SETCOMPILETIME
+#define REMOTE_NO_REMOTE
+#define LED_DRIVER_NEOPIXEL
+#define PINSQW  3
+#define DISABLERTCINT
 /*
  * Den DEBUG-Schalter gibt es in allen Bibiliotheken. Wird er eingeschaltet, werden ueber den
  * 'Serial-Monitor' der Arduino-Umgebung Informationen ausgegeben. Die Geschwindigkeit im
  * Serial-Monitor muss mit der hier angegeben uebereinstimmen.
  * Default: ausgeschaltet
  */
-//#define DEBUG
+#define DEBUG
 #include "Debug.h"
 // Die Geschwindigkeit der seriellen Schnittstelle. Default: 57600. Die Geschwindigkeit brauchen wir immer,
 // da auch ohne DEBUG Meldungen ausgegeben werden!
-#define SERIAL_SPEED 57600
+//EDITED: to 19.200 in NOT DEBUG Mode, 57600 did not work reliable
+#define SERIAL_SPEED 9600
 
 /*
  * Die persistenten (im EEPROM gespeicherten) Einstellungen.
@@ -379,12 +387,13 @@ LedDriverPowerShiftRegister ledDriver(10, 12, 11, 3);
 /**
  * Der LED-Treiber fuer NeoPixel-Stripes an einem BBRTCAD.
  * Data: 6
+ * SÖREN modifiziert um i2c adresse für das rtl zu verwenden
  */
 #ifdef LED_DRIVER_NEOPIXEL
-LedDriverNeoPixel ledDriver(6);
+LedDriverNeoPixel ledDriver(2);
 
 #define PIN_MODE 11
-#define PIN_M_PLUS 13
+#define PIN_M_PLUS 10
 #define PIN_H_PLUS 12
 
 #define BUTTONS_PRESSING_AGAINST LOW
@@ -394,15 +403,15 @@ LedDriverNeoPixel ledDriver(6);
 #define PIN_LDR A0
 #define IS_INVERTED true
 
-#define PIN_SQW_SIGNAL 2
-#define PIN_DCF77_SIGNAL 3
+#define PIN_SQW_SIGNAL -1
+#define PIN_DCF77_SIGNAL 5
 
 #define PIN_DCF77_PON 4
 
-#define PIN_SQW_LED 9
-#define PIN_DCF77_LED 10
+#define PIN_SQW_LED -1
+#define PIN_DCF77_LED -1
 
-#define PIN_SPEAKER -1
+#define PIN_SPEAKER A6
 #endif
 
 /**
@@ -587,7 +596,7 @@ unsigned long lastFpsCheck = 0;
 #ifdef EVENTDAY
     // Fuer die Anzeige eines Symbols bei einem Ereignis
     char eventdaySymbol;
-#endif EVENTDAY
+#endif
 
 #ifdef COUNTDOWN
     // Fuer den Ereignis-Countdown
@@ -702,7 +711,6 @@ int freeRam() {
 #endif
 }
 
-
 /**
  * Initialisierung. setup() wird einmal zu Beginn aufgerufen, wenn der
  * Arduino Strom bekommt.
@@ -715,6 +723,8 @@ void setup() {
 
     pinMode(PIN_DCF77_PON, OUTPUT);
     enableDcf(false);
+    settings.setDcfSignalIsInverted(false);
+    settings.setUseLdr(false);
 
     // LED-Treiber initialisieren
     ledDriver.init();
@@ -751,20 +761,25 @@ void setup() {
     Serial.print(F(__TIME__));
     Serial.print(F(" / "));
     Serial.println(F(__DATE__));
-
-    /*
+    
     // Uhrzeit nach Compile-Zeit stellen...
+    #ifdef SETCOMPILETIME
     rtc.set(__DATE__, __TIME__);
     rtc.writeTime();
-     */
-
-    // RTC starten...
+    #endif
+              
+        // RTC starten...
     rtc.readTime();
     if ((rtc.getSeconds() >= 60) || (rtc.getMinutes() >= 60) || (rtc.getHours() >= 24) || (rtc.getYear() < 15)) {
         // Echtzeituhr enthaelt Schrott, neu mit erkennbaren Zahlen beschreiben...
         DEBUG_PRINT(F("Resetting RTC..."));
-        rtc.set(11, 11, 1, 1, 1, 15);
-        rtc.setSeconds(11);
+        rtc.setHours(13);
+        rtc.setMinutes(24);
+        rtc.setSeconds(0);
+        rtc.setYear(15);
+        rtc.setMonth(1);
+        rtc.setDate(1);
+        rtc.setDayOfWeek(1);
     }
 
 #ifdef DS1307
@@ -798,6 +813,12 @@ void setup() {
     // RISING ist einer pro Sekunde, das reicht.
     // Auf FALLING geandert, das signalisiert
     // den Sekundenwechsel, Danke an Peter.
+
+    //Eiko: Als workaround setze ich das einfach alle paar millisekunden
+    #ifndef DISABLERTCINT
+    attachInterrupt(digitalPinToInterrupt(PINSQW), updateFromRtc, FALLING);
+    #endif
+
     attachInterrupt(0, updateFromRtc, FALLING);
 
     // Werte vom LDR einlesen und vermuellen, da die ersten nichts taugen...
@@ -834,11 +855,11 @@ void setup() {
     irTranslator.printSignature();
     irrecv.enableIRIn();
 #else
-    Serial.print(F("Remote: disabled."));
+    Serial.println(F("Remote: disabled."));
 #endif
 
     if (settings.getEnableAlarm()) {
-        Serial.println(F("Alarm is enabled"));
+        Serial.println(F("Alarm is enabled."));
     }
 
     if (settings.getDcfSignalIsInverted()) {
@@ -856,7 +877,7 @@ void setup() {
     // Display einschalten...
     ledDriver.wakeUp();
     ledDriver.setBrightness(settings.getBrightness());
-}
+    }
 
 /*
  * Schreibroutinen für Buchstaben und Zahlen
@@ -920,6 +941,13 @@ void loop() {
     byte b_hour, b_min;
     char c_TimeShift;
 
+   //Serial.println("T");
+    #ifdef DISABLERTCINT
+      if(millis()%1000==0){
+        updateFromRtc();  //workaround as we do not have any pin-interrupts any mor
+      }
+    #endif
+    
     //
     // FPS
     //
@@ -959,7 +987,7 @@ void loop() {
     // Flanke des SQW-Signals von der RTC.
     // Oder falls eine Tasten-Aktion eine sofortige Aktualisierung des Displays braucht.
     //
-    if (needsUpdateFromRtc) {
+      if (needsUpdateFromRtc) {       
         needsUpdateFromRtc = false;
 
         //
@@ -985,7 +1013,7 @@ void loop() {
                 // Als Wecker und wenn in Einstellungsmenü Display nicht abschalten...
                 if ( (!settings.getEnableAlarm()) && (mode < EXT_MODE_START) && (!checkNight(1)) ) {
                     goToNight();
-                } 
+                }
                 break;
             case STD_MODE_NIGHT:
                 // Wenn Nacht vorbei, wird Display wieder eingeschaltet (eine Sekunde verzögert)
@@ -1093,7 +1121,7 @@ void loop() {
                     ledDriver.setPixelInScreenBuffer(10, 4, matrix);
                     ledDriver.setPixelInScreenBuffer(10, 9, matrix);
                 }
-                break;
+                 break;
             #ifdef COUNTDOWN
                 case STD_MODE_COUNTDOWN:
                     /**
@@ -1192,33 +1220,48 @@ void loop() {
                         case LANGUAGE_DE_DE:
                             write2Staben('D', 'E');
                             break;
-                        case LANGUAGE_DE_SW:
-                            write4Staben('D', 'E', 'S', 'W');
+                        /*case LANGUAGE_DE_SW:
+                            matrix[0 + i] |= pgm_read_byte_near(&(staben['D' - 'A'][i])) << 11;
+                            matrix[0 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 5;
+                            matrix[5 + i] |= pgm_read_byte_near(&(staben['S' - 'A'][i])) << 11;
+                            matrix[5 + i] |= pgm_read_byte_near(&(staben['W' - 'A'][i])) << 5;
                             break;
                         case LANGUAGE_DE_BA:
-                            write4Staben('D', 'E', 'B', 'A');
+                            matrix[0 + i] |= pgm_read_byte_near(&(staben['D' - 'A'][i])) << 11;
+                            matrix[0 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 5;
+                            matrix[5 + i] |= pgm_read_byte_near(&(staben['B' - 'A'][i])) << 11;
+                            matrix[5 + i] |= pgm_read_byte_near(&(staben['A' - 'A'][i])) << 5;
                             break;
                         case LANGUAGE_DE_SA:
-                            write4Staben('D', 'E', 'S', 'A');
+                            matrix[0 + i] |= pgm_read_byte_near(&(staben['D' - 'A'][i])) << 11;
+                            matrix[0 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 5;
+                            matrix[5 + i] |= pgm_read_byte_near(&(staben['S' - 'A'][i])) << 11;
+                            matrix[5 + i] |= pgm_read_byte_near(&(staben['A' - 'A'][i])) << 5;
                             break;
                         case LANGUAGE_CH:
-                            write2Staben('C', 'H');
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['C' - 'A'][i])) << 11;
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['H' - 'A'][i])) << 5;
                             break;
                         case LANGUAGE_EN:
-                            write2Staben('E', 'N');
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 11;
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['N' - 'A'][i])) << 5;
                             break;
                         case LANGUAGE_FR:
-                            write2Staben('F', 'R');
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['F' - 'A'][i])) << 11;
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['R' - 'A'][i])) << 5;
                             break;
                         case LANGUAGE_IT:
-                            write2Staben('I', 'T');
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['I' - 'A'][i])) << 11;
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['T' - 'A'][i])) << 5;
                             break;
                         case LANGUAGE_NL:
-                            write2Staben('N', 'L');
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['N' - 'A'][i])) << 11;
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['L' - 'A'][i])) << 5;
                             break;
                         case LANGUAGE_ES:
-                            write2Staben('E', 'S');
-                            break;
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 11;
+                            matrix[2 + i] |= pgm_read_byte_near(&(staben['S' - 'A'][i])) << 5;
+                            break;*/
                     }
                 }
                 break;
@@ -1249,7 +1292,7 @@ void loop() {
                 renderer.setCorners(dcf77.getDcf77ErrorCorner(settings.getDcfSignalIsInverted()), settings.getRenderCornersCw(), matrix);
                 break;
         }
-
+      
         // Update mit onChange = true, weil sich hier (aufgrund needsUpdateFromRtc) immer was geaendert hat.
         // Entweder weil wir eine Sekunde weiter sind, oder weil eine Taste gedrueckt wurde.
         ledDriver.writeScreenBufferToMatrix(matrix, true);
@@ -1428,7 +1471,7 @@ void modePressed() {
                 leaveFromNight();
                 break;
             default:
-                mode++;
+        mode++;
         }
               
         
@@ -1877,6 +1920,6 @@ void setDisplayDarker() {
  */
 void setDisplayBrightness(byte brightness) {
     settings.setBrightness(brightness);
-    settings.saveToEEPROM();
+        settings.saveToEEPROM();
     ledDriver.setBrightness(brightness);
 }

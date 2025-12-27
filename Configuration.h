@@ -82,18 +82,18 @@
 /*
  * Welcher LED-Treiber soll benutzt werden?
  */
-#define LED_DRIVER_DEFAULT
+// #define LED_DRIVER_DEFAULT
 // #define LED_DRIVER_UEBERPIXEL
 // #define LED_DRIVER_POWER_SHIFT_REGISTER
-// #define LED_DRIVER_NEOPIXEL
+#define LED_DRIVER_NEOPIXEL
 // #define LED_DRIVER_DOTSTAR
 // #define LED_DRIVER_LPD8806
 
 /*
  * Welche Uhr soll benutzt werden?
  */
-#define DS1307
-// #define DS3231
+// #define DS1307
+#define DS3231
 
 /*
  * Welche Fernbedienung soll benutzt werden?

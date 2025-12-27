@@ -29,7 +29,7 @@
 #include "Configuration.h"
 
 #define LANGUAGE_DE_DE 0
-#define LANGUAGE_DE_SW 1
+/*#define LANGUAGE_DE_SW 1
 #define LANGUAGE_DE_BA 2
 #define LANGUAGE_DE_SA 3
 #define LANGUAGE_CH    4
@@ -37,8 +37,8 @@
 #define LANGUAGE_FR    6
 #define LANGUAGE_IT    7
 #define LANGUAGE_NL    8
-#define LANGUAGE_ES    9
-#define LANGUAGE_COUNT 9
+#define LANGUAGE_ES    9*/
+#define LANGUAGE_COUNT 0
 
 class Renderer {
 public:

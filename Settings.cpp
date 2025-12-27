@@ -165,12 +165,15 @@ TimeStamp* Settings::getNightTimeStamp(byte _position) {
 void Settings::loadFromEEPROM() {
     if ((EEPROM.read(0) == SETTINGS_MAGIC_NUMBER) && (EEPROM.read(1) == SETTINGS_VERSION)) {
         // es sind gueltige Einstellungen vorhanden...
-        _language = EEPROM.read(2);
-        _renderCornersCw = EEPROM.read(3);
-        _use_ldr = EEPROM.read(4);
+        //_language = EEPROM.read(2);      //we do not allow to change the language
+        //_renderCornersCw = EEPROM.read(3);
+        //_use_ldr = EEPROM.read(4);    //we do not have LDR
         _brightness = EEPROM.read(5);
+        //Serial.println(_brightness);
+        if(_brightness<=0 ||_brightness>10)
+             _brightness=3;
         _enableAlarm = EEPROM.read(6);
-        _dcfSignalIsInverted = EEPROM.read(7);
+        //_dcfSignalIsInverted = EEPROM.read(7);    //the timeshift is ok
         _timeShift = EEPROM.read(8);
         _jumpToTime = EEPROM.read(9);
         _loadSaveNightTimes(false);

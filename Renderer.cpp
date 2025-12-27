@@ -26,12 +26,12 @@
 
 #include "Woerter_DE.h"
 // #include "Woerter_DE_MKF.h"
-#include "Woerter_CH.h"
-#include "Woerter_EN.h"
-#include "Woerter_FR.h"
-#include "Woerter_IT.h"
-#include "Woerter_NL.h"
-#include "Woerter_ES.h"
+//#include "Woerter_CH.h"
+//#include "Woerter_EN.h"
+//#include "Woerter_FR.h"
+//#include "Woerter_IT.h"
+//#include "Woerter_NL.h"
+//#include "Woerter_ES.h"
 
 // #define DEBUG
 #include "Debug.h"
@@ -85,10 +85,10 @@ void Renderer::setMinutes(char hours, byte minutes, byte language, word matrix[1
             // Deutsch: Hochdeutsch
             //
         case LANGUAGE_DE_DE:
-        case LANGUAGE_DE_SW:
-        case LANGUAGE_DE_BA:
-        case LANGUAGE_DE_SA:
-            DE_ESIST;
+//        case LANGUAGE_DE_SW:
+//        case LANGUAGE_DE_BA:
+//        case LANGUAGE_DE_SA:
+            DE_SISCH;
 
             switch (minutes_5) {
                 case 0:
@@ -109,27 +109,27 @@ void Renderer::setMinutes(char hours, byte minutes, byte language, word matrix[1
                     break;
                 case 3:
                     // viertel nach
-                    if ((language == LANGUAGE_DE_SW) || (language == LANGUAGE_DE_SA)) {
+                    //if ((language == LANGUAGE_DE_SW) || (language == LANGUAGE_DE_SA)) {
                         DE_VIERTEL;
                         setHours(hours + 1, false, language, matrix);
-                    } else {
-                        DE_VIERTEL;
-                        DE_NACH;
-                        setHours(hours, false, language, matrix);
-                    }
+                   // } else {
+                   //     DE_VIERTEL;
+                   //     DE_NACH;
+                   //     setHours(hours, false, language, matrix);
+                   // }
                     break;
                 case 4:
                     // 20 nach
-                    if (language == LANGUAGE_DE_SA) {
+                    //if (language == LANGUAGE_DE_SA) {
                         DE_ZEHN;
                         DE_VOR;
                         DE_HALB;
                         setHours(hours + 1, false, language, matrix);
-                    } else {
-                        DE_ZWANZIG;
-                        DE_NACH;
-                        setHours(hours, false, language, matrix);
-                    }
+                    //} else {
+                    //    DE_ZWANZIG;
+                    //    DE_NACH;
+                    //    setHours(hours, false, language, matrix);
+                    //}
                     break;
                 case 5:
                     // 5 vor halb
@@ -152,27 +152,27 @@ void Renderer::setMinutes(char hours, byte minutes, byte language, word matrix[1
                     break;
                 case 8:
                     // 20 vor
-                    if (language == LANGUAGE_DE_SA) {
+                    //if (language == LANGUAGE_DE_SA) {
                         DE_ZEHN;
                         DE_NACH;
                         DE_HALB;
                         setHours(hours + 1, false, language, matrix);
-                    } else {
-                        DE_ZWANZIG;
-                        DE_VOR;
-                        setHours(hours + 1, false, language, matrix);
-                    }
+                    //} else {
+                    //    DE_ZWANZIG;
+                    //    DE_VOR;
+                    //    setHours(hours + 1, false, language, matrix);
+                    //}
                     break;
                 case 9:
                     // viertel vor
-                    if ((language == LANGUAGE_DE_SW) || (language == LANGUAGE_DE_BA) || (language == LANGUAGE_DE_SA)) {
+                    //if ((language == LANGUAGE_DE_SW) || (language == LANGUAGE_DE_BA) || (language == LANGUAGE_DE_SA)) {
                         DE_DREIVIERTEL;
                         setHours(hours + 1, false, language, matrix);
-                    } else {
-                        DE_VIERTEL;
-                        DE_VOR;
-                        setHours(hours + 1, false, language, matrix);
-                    }
+                    //} else {
+                    //    DE_VIERTEL;
+                    //    DE_VOR;
+                    //    setHours(hours + 1, false, language, matrix);
+                    //}
                     break;
                 case 10:
                     // 10 vor
@@ -188,7 +188,7 @@ void Renderer::setMinutes(char hours, byte minutes, byte language, word matrix[1
                     break;
             }
             break;
-            //
+       /*     //
             // Schweiz: Berner-Deutsch
             //
         case LANGUAGE_CH:
@@ -706,7 +706,7 @@ void Renderer::setMinutes(char hours, byte minutes, byte language, word matrix[1
                     setHours(hours + 1, false, language, matrix);
                     break;
             }
-            break;
+            break;*/
     }
 }
 
@@ -719,75 +719,89 @@ void Renderer::setMinutes(char hours, byte minutes, byte language, word matrix[1
  * im Code...
  */
 void Renderer::setHours(char hours, boolean glatt, byte language, word matrix[16]) {
+    // oben in setMinutes wird das zwar
+    // schon behandelt, aber durch Spezialfaelle
+    // in der Zeitzonen-Behandlung und einer
+    // Stundenaddition oben kann hier 
+    // die Stunde wieder nicht im richtigen
+    // Bereich sein...
+    //while (hours < 0) {
+    //    hours += 12;
+    //}
+    //while (hours > 24) {
+    //    hours -= 12;
+    //}
+
     switch (language) {
             //
             // Deutsch (Hochdeutsch, Schwaebisch, Bayrisch)
             //
         case LANGUAGE_DE_DE:
-        case LANGUAGE_DE_SW:
-        case LANGUAGE_DE_BA:
-        case LANGUAGE_DE_SA:
-            if (glatt) {
+    //    case LANGUAGE_DE_SW:
+      //  case LANGUAGE_DE_BA:
+       // case LANGUAGE_DE_SA:
+            /*if (glatt) {
                 DE_UHR;
-            }
+            }*/
 
             switch (hours) {
                 case 0:
                 case 12:
                 case 24:
-                    DE_H_ZWOELF;
+                    DE_H_ZWOELFE;
                     break;
                 case 1:
                 case 13:
-                    if (glatt) {
-                        DE_H_EIN;
+                    DE_H_OISE;
+                    /*if (glatt) {
+                        DE_H_;
                     } else {
                         DE_H_EINS;
-                    }
+                    }*/
                     break;
                 case 2:
                 case 14:
-                    DE_H_ZWEI;
+                    DE_H_ZWOIE;
                     break;
                 case 3:
                 case 15:
-                    DE_H_DREI;
+                    DE_H_DREIE;
                     break;
                 case 4:
                 case 16:
-                    DE_H_VIER;
+                    DE_H_VIERE;
                     break;
                 case 5:
                 case 17:
-                    DE_H_FUENF;
+                    DE_H_FUENFE;
                     break;
                 case 6:
                 case 18:
-                    DE_H_SECHS;
+                    DE_H_SECHSE;
                     break;
                 case 7:
                 case 19:
-                    DE_H_SIEBEN;
+                    DE_H_SIEBNE;
                     break;
                 case 8:
                 case 20:
-                    DE_H_ACHT;
+                    DE_H_ACHDE;
                     break;
                 case 9:
                 case 21:
-                    DE_H_NEUN;
+                    DE_H_NEUNE;
                     break;
                 case 10:
                 case 22:
-                    DE_H_ZEHN;
+                    DE_H_ZEHNE;
                     break;
                 case 11:
                 case 23:
-                    DE_H_ELF;
+                    DE_H_ELFE;
                     break;
             }
             break;
-            //
+ /*           //
             // Schweiz: Berner-Deutsch
             //
         case LANGUAGE_CH:
@@ -1131,7 +1145,7 @@ void Renderer::setHours(char hours, boolean glatt, byte language, word matrix[16
                     ES_H_ONCE;
                     break;
             }
-            break;
+            break;*/
     }
 }
 
@@ -1145,10 +1159,10 @@ void Renderer::setCorners(byte minutes, boolean cw, word matrix[16]) {
     byte b_minutes = minutes % 5;
     for (byte i = 0; i < b_minutes; i++) {
         byte j;
-        if (cw) {
+    if (cw) {
           // j: 1, 0, 3, 2
           j = (1 - i + 4) % 4;
-        } else {
+    } else {
           // j: 0, 1, 2, 3
           j = i;
         }
@@ -1177,12 +1191,12 @@ void Renderer::activateAlarmLed(word matrix[16]) {
 void Renderer::cleanWordsForAlarmSettingMode(byte language, word matrix[16]) {
     switch (language) {
         case LANGUAGE_DE_DE:
-        case LANGUAGE_DE_SW:
-        case LANGUAGE_DE_BA:
-        case LANGUAGE_DE_SA:
-            matrix[0] &= 0b0010001111111111; // ES IST weg
+ //       case LANGUAGE_DE_SW:
+ //       case LANGUAGE_DE_BA:
+//        case LANGUAGE_DE_SA:
+            matrix[0] &= 0b0100001111111111; // ES IST weg
             break;
-        case LANGUAGE_CH:
+/*        case LANGUAGE_CH:
             matrix[0] &= 0b0010000111111111; // ES ISCH weg
             break;
         case LANGUAGE_EN:
@@ -1201,14 +1215,14 @@ void Renderer::cleanWordsForAlarmSettingMode(byte language, word matrix[16]) {
         case LANGUAGE_ES:
             matrix[0] &= 0b1000100011111111; // SON LAS weg
             matrix[0] &= 0b0011100111111111; // ES LA weg
-            break;
+            break;*/
     }
 }
 
 /**
  * Sprachlicher Spezialfall fuer Franzoesisch.
  */
-void Renderer::FR_hours(byte hours, word matrix[16]) {
+/*void Renderer::FR_hours(byte hours, word matrix[16]) {
     if ((hours == 1) || (hours == 13)) {
         FR_HEURE;
     } else if ((hours == 0) || (hours == 12) || (hours == 24)) {
@@ -1216,26 +1230,26 @@ void Renderer::FR_hours(byte hours, word matrix[16]) {
     } else {
         FR_HEURES;
     }
-}
+}*/
 
 /**
  * Sprachlicher Spezialfall fuer Italienisch.
  */
-void Renderer::IT_hours(byte hours, word matrix[16]) {
+/*void Renderer::IT_hours(byte hours, word matrix[16]) {
     if ((hours != 1) && (hours != 13)) {
         IT_SONOLE;
     } else {
         IT_E;
     }
-}
+}*/
 
 /**
  * Sprachlicher Spezialfall fuer Spanisch.
  */
-void Renderer::ES_hours(byte hours, word matrix[16]) {
+/*void Renderer::ES_hours(byte hours, word matrix[16]) {
     if ((hours == 1) || (hours == 13)) {
         ES_ESLA;
     } else {
         ES_SONLAS;
     }
-}
+}*/
