@@ -54,6 +54,8 @@
 // FPS im Debug-Modus anzeigen (Standard: eingeschaltet).
 #define FPS_SHOW_DEBUG
 
+// TODO: add config setting to enable language selection. Otherwise, use hard-coded default
+
 /*
  * Alarmfunktion einschalten?
  * Dazu muss ein Lautsprecher an D13 und GND und eine weitere 'Eck-LED' an die 5te Reihe.

@@ -238,7 +238,8 @@
 #include "AnalogButton.h"
 #include "LDR.h"
 #include "DCF77Helper.h"
-#include "Renderer.h"
+#include "renderers/Renderer.h"
+#include "renderers/Renderer_DE_SW.h"
 #include "Staben.h"
 #include "Alarm.h"
 #include "Settings.h"
@@ -716,6 +717,8 @@ int freeRam() {
  * Arduino Strom bekommt.
  */
 void setup() {
+    renderer = new Renderer_DE_SW();
+
     Serial.begin(SERIAL_SPEED);
     Serial.println(F("Qlockthree is initializing..."));
     DEBUG_PRINTLN(F("... and starting in debug-mode..."));
@@ -1058,7 +1061,7 @@ void loop() {
         switch (mode) {
             case STD_MODE_NORMAL:
             case EXT_MODE_TIMESET:
-                renderer.setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), settings.getLanguage(), matrix);
+                renderer.setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), matrix);
                 renderer.setCorners(rtc.getMinutes(), settings.getRenderCornersCw(), matrix);
                 break;
             case EXT_MODE_TIME_SHIFT:
@@ -1083,13 +1086,13 @@ void loop() {
                 break;
             case STD_MODE_ALARM:
                 if (alarm.getShowAlarmTimeTimer() == 0) {
-                    renderer.setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), settings.getLanguage(), matrix);
+                    renderer.setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), matrix);
                     renderer.setCorners(rtc.getMinutes(), settings.getRenderCornersCw(), matrix);
                     renderer.activateAlarmLed(matrix);
                 } else {
-                    renderer.setMinutes(alarm.getHours() + settings.getTimeShift(), alarm.getMinutes(), settings.getLanguage(), matrix);
+                    renderer.setMinutes(alarm.getHours() + settings.getTimeShift(), alarm.getMinutes(), matrix);
                     renderer.setCorners(alarm.getMinutes(), settings.getRenderCornersCw(), matrix);
-                    renderer.cleanWordsForAlarmSettingMode(settings.getLanguage(), matrix); // ES IST weg
+                    renderer.cleanWordsForAlarmSettingMode(matrix); // ES IST weg
                     if (alarm.getShowAlarmTimeTimer() % 2 == 0) {
                         renderer.activateAlarmLed(matrix);
                     }
@@ -1214,13 +1217,14 @@ void loop() {
                     write4Staben('R', 'S', 'N', 'O');
                 }
                 break;
+                // TODO: enable language selection only if active in configuration
             case EXT_MODE_LANGUAGE:
-                for (byte i = 0; i < 5; i++) {
+                /*for (byte i = 0; i < 5; i++) {
                     switch (settings.getLanguage()) {
                         case LANGUAGE_DE_DE:
                             write2Staben('D', 'E');
                             break;
-                        /*case LANGUAGE_DE_SW:
+                        case LANGUAGE_DE_SW:
                             matrix[0 + i] |= pgm_read_byte_near(&(staben['D' - 'A'][i])) << 11;
                             matrix[0 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 5;
                             matrix[5 + i] |= pgm_read_byte_near(&(staben['S' - 'A'][i])) << 11;
@@ -1261,9 +1265,9 @@ void loop() {
                         case LANGUAGE_ES:
                             matrix[2 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 11;
                             matrix[2 + i] |= pgm_read_byte_near(&(staben['S' - 'A'][i])) << 5;
-                            break;*/
+                            break;
                     }
-                }
+                }*/
                 break;
             case EXT_MODE_TEST:
                 renderer.setCorners(helperSeconds % 5, settings.getRenderCornersCw(), matrix);
