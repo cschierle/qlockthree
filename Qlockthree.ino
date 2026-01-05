@@ -292,7 +292,7 @@ Settings settings;
 /**
  * Der Renderer, der die Woerter auf die Matrix ausgibt.
  */
-Renderer renderer;
+Renderer *renderer;
 
 /**
  * Der LED-Treiber fuer 74HC595-Shift-Register. Verwendet
@@ -734,7 +734,7 @@ void setup() {
     // Inhalt des Led-Treibers loeschen...
     ledDriver.clearData();
     // und Inhalt des Bildspeichers loeschen
-    renderer.clearScreenBuffer(matrix);
+    renderer -> clearScreenBuffer(matrix);
     // wir brauchen nur 10 Zeilen...
     ledDriver.setLinesToWrite(10);
 
@@ -1057,12 +1057,12 @@ void loop() {
         //
         // Bildschirmpuffer beschreiben...
         //
-        renderer.clearScreenBuffer(matrix);
+        renderer -> clearScreenBuffer(matrix);
         switch (mode) {
             case STD_MODE_NORMAL:
             case EXT_MODE_TIMESET:
-                renderer.setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), matrix);
-                renderer.setCorners(rtc.getMinutes(), settings.getRenderCornersCw(), matrix);
+                renderer -> setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), matrix);
+                renderer -> setCorners(rtc.getMinutes(), settings.getRenderCornersCw(), matrix);
                 break;
             case EXT_MODE_TIME_SHIFT:
                 c_TimeShift = settings.getTimeShift();
@@ -1086,15 +1086,15 @@ void loop() {
                 break;
             case STD_MODE_ALARM:
                 if (alarm.getShowAlarmTimeTimer() == 0) {
-                    renderer.setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), matrix);
-                    renderer.setCorners(rtc.getMinutes(), settings.getRenderCornersCw(), matrix);
-                    renderer.activateAlarmLed(matrix);
+                    renderer -> setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), matrix);
+                    renderer -> setCorners(rtc.getMinutes(), settings.getRenderCornersCw(), matrix);
+                    renderer -> activateAlarmLed(matrix);
                 } else {
-                    renderer.setMinutes(alarm.getHours() + settings.getTimeShift(), alarm.getMinutes(), matrix);
-                    renderer.setCorners(alarm.getMinutes(), settings.getRenderCornersCw(), matrix);
-                    renderer.cleanWordsForAlarmSettingMode(matrix); // ES IST weg
+                    renderer -> setMinutes(alarm.getHours() + settings.getTimeShift(), alarm.getMinutes(), matrix);
+                    renderer -> setCorners(alarm.getMinutes(), settings.getRenderCornersCw(), matrix);
+                    renderer -> cleanWordsForAlarmSettingMode(matrix); // ES IST weg
                     if (alarm.getShowAlarmTimeTimer() % 2 == 0) {
-                        renderer.activateAlarmLed(matrix);
+                        renderer -> activateAlarmLed(matrix);
                     }
                     alarm.decShowAlarmTimeTimer();
                 }
@@ -1270,9 +1270,9 @@ void loop() {
                 }*/
                 break;
             case EXT_MODE_TEST:
-                renderer.setCorners(helperSeconds % 5, settings.getRenderCornersCw(), matrix);
+                renderer -> setCorners(helperSeconds % 5, settings.getRenderCornersCw(), matrix);
                 if (settings.getEnableAlarm()) {
-                    renderer.activateAlarmLed(matrix);
+                    renderer -> activateAlarmLed(matrix);
                 }
                 for (byte i = 0; i < 11; i++) {
                     ledDriver.setPixelInScreenBuffer(x, i, matrix);
@@ -1293,7 +1293,7 @@ void loop() {
             #endif
             case EXT_MODE_DCF_DEBUG:
                 needsUpdateFromRtc = true;
-                renderer.setCorners(dcf77.getDcf77ErrorCorner(settings.getDcfSignalIsInverted()), settings.getRenderCornersCw(), matrix);
+                renderer -> setCorners(dcf77.getDcf77ErrorCorner(settings.getDcfSignalIsInverted()), settings.getRenderCornersCw(), matrix);
                 break;
         }
       
@@ -1626,11 +1626,13 @@ void hourPlusPressed() {
             settings.setDcfSignalIsInverted(!settings.getDcfSignalIsInverted());
             break;
         case EXT_MODE_LANGUAGE:
+        /*
             if (settings.getLanguage() == 0) {
                 settings.setLanguage(LANGUAGE_COUNT);
             } else {
                 settings.setLanguage(settings.getLanguage() - 1);
             }
+                */
             break;
     }
 }
@@ -1713,10 +1715,12 @@ void minutePlusPressed() {
             settings.setDcfSignalIsInverted(!settings.getDcfSignalIsInverted());
             break;
         case EXT_MODE_LANGUAGE:
+        /*
             settings.setLanguage(settings.getLanguage() + 1);
             if (settings.getLanguage() > LANGUAGE_COUNT) {
                 settings.setLanguage(0);
             }
+                */
             break;
     }
 }

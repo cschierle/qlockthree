@@ -18,6 +18,7 @@
 
 #include <avr/pgmspace.h>
 
+// TODO: why does this type declaratiion fail?
 extern const char staben[][5] PROGMEM;
 const char staben[][5] = {
     { // 0:A
