@@ -537,9 +537,10 @@ Button modeChangeButton(PIN_MODE, BUTTONS_PRESSING_AGAINST);
 #define STD_MODE_DATE       4
 #define STD_MODE_BRIGHTNESS 5
 #define STD_MODE_BLANK      6
-#define STD_MODE_COUNT      7
+#define STD_MODE_COLORFUL   7
+#define STD_MODE_COUNT      8
 // nicht manuell zu erreichender Modus...
-#define STD_MODE_NIGHT      8
+#define STD_MODE_NIGHT      9
 
 
 
@@ -591,6 +592,13 @@ byte x, y;
 // Fuer fps-Anzeige
 word frames = 0;
 unsigned long lastFpsCheck = 0;
+
+struct RgbColor {
+    unsigned char R;
+    unsigned char G;
+    unsigned char B;
+};
+RgbColor currentColor = { 255, 255, 255 };
 
 // Eigene Variablendeklaration
 #ifdef EVENTDAY
@@ -1055,11 +1063,21 @@ void loop() {
         // Bildschirmpuffer beschreiben...
         //
         renderer.clearScreenBuffer(matrix);
+        // reset color to white
+        ledDriver.setColor(255,255,255);
         switch (mode) {
             case STD_MODE_NORMAL:
             case EXT_MODE_TIMESET:
                 renderer.setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), settings.getLanguage(), matrix);
                 renderer.setCorners(rtc.getMinutes(), settings.getRenderCornersCw(), matrix);
+                if (settings.getRandomizeColors()) {
+                    if (helperSeconds == 0) {
+                        currentColor.R = random(0,255);
+                        currentColor.G = random(0,255);
+                        currentColor.B = random(0,255);
+                    }
+                    ledDriver.setColor(currentColor.R, currentColor.G, currentColor.B);
+                }
                 break;
             case EXT_MODE_TIME_SHIFT:
                 c_TimeShift = settings.getTimeShift();
@@ -1191,6 +1209,9 @@ void loop() {
                         matrix[9 - yb] |= 1 << (14 - xb);
                     }
                 }
+                break;
+            case STD_MODE_COLORFUL:
+                displayColorfulMenu();
                 break;
             case EXT_MODE_CORNERS:
                 if (settings.getRenderCornersCw()) {
@@ -1429,6 +1450,17 @@ void loop() {
       manageNewDCF77Data();
 }
 
+void displayColorfulMenu() {
+    write2yStaben('C', 'O', 0);
+    if (settings.getRandomizeColors()) {
+        ledDriver.setColor(255, 255, 0); 
+        write2yStaben('O', 'N', 5);
+    } else {
+        ledDriver.setColor(255,255,255);
+        write2yStaben('O', 'F', 5);
+    }
+}
+
 /**
  * Was soll ausgefuehrt werden, wenn die H+ und M+ -Taste zusammen gedrueckt wird?
  */
@@ -1628,6 +1660,9 @@ void hourPlusPressed() {
                 settings.setLanguage(settings.getLanguage() - 1);
             }
             break;
+        case STD_MODE_COLORFUL:
+            settings.setRandomizeColors(!settings.getRandomizeColors());
+            break;
     }
 }
 
@@ -1713,6 +1748,9 @@ void minutePlusPressed() {
             if (settings.getLanguage() > LANGUAGE_COUNT) {
                 settings.setLanguage(0);
             }
+            break;
+        case STD_MODE_COLORFUL:
+            settings.setRandomizeColors(!settings.getRandomizeColors());
             break;
     }
 }

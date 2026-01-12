@@ -55,6 +55,9 @@ public:
     byte getJumpToTime();
     void setJumpToTime(byte jumpToTime);
 
+    boolean getRandomizeColors();
+    void setRandomizeColors(boolean randomizeColors);
+
     TimeStamp* getNightTimeStamp(byte _position);
 
     void loadFromEEPROM();
@@ -67,7 +70,7 @@ private:
     byte _brightness;
     boolean _enableAlarm;
     boolean _dcfSignalIsInverted;
-
+    boolean _randomizeColors;
     signed char _timeShift;
     byte _jumpToTime;
     TimeStamp* _NightTimes[4];

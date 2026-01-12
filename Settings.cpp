@@ -40,6 +40,7 @@ Settings::Settings() {
     _dcfSignalIsInverted = false;
     _timeShift = 0;
     _jumpToTime = 10;
+    _randomizeColors = false;
     byte offTimeMoFrHours = 3;
     byte offTimeMoFrMinutes = 0;
     byte onTimeMoFrHours = 4;
@@ -146,6 +147,14 @@ void Settings::setJumpToTime(byte jumpToTime) {
     _jumpToTime = jumpToTime;
 }
 
+boolean Settings::getRandomizeColors() {
+    return _randomizeColors;
+}
+
+void Settings::setRandomizeColors(boolean randomizeColors) {
+    _randomizeColors = randomizeColors;
+}
+
 /**
  * Pointer auf onTime oder offTime
  */
@@ -177,6 +186,7 @@ void Settings::loadFromEEPROM() {
         _timeShift = EEPROM.read(8);
         _jumpToTime = EEPROM.read(9);
         _loadSaveNightTimes(false);
+        _randomizeColors = EEPROM.read(10);
     }
 }
 
@@ -213,6 +223,9 @@ void Settings::saveToEEPROM() {
     }
     if (EEPROM.read(9) != _jumpToTime) {
         EEPROM.write(9, _jumpToTime);
+    }
+    if (EEPROM.read(10) != _randomizeColors) {
+        EEPROM.write(10, _randomizeColors);
     }
     _loadSaveNightTimes(true);
 }
