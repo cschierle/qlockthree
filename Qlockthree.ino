@@ -1093,11 +1093,17 @@ void loop() {
         //
         // Bildschirmpuffer beschreiben...
         //
+        // Sync currentFace in case mode changed from an ISR or internal transition
+        // (e.g. AUTO_JUMP_TO_TIME firing in the RTC interrupt handler).
+        if (currentFace != faces[mode]) {
+            updateCurrentFace();
+        }
         renderer.clearScreenBuffer(matrix);
         // reset color to white
         ledDriver.setColor(255,255,255);
         currentFace->writeToMatrix(matrix);
-        // A face may change mode internally (e.g. countdown expiry); sync currentFace if needed.
+        // A face may change mode internally during rendering (e.g. countdown expiry
+        // sets mode to STD_MODE_NORMAL); sync currentFace again if that happened.
         if (currentFace != faces[mode]) {
             updateCurrentFace();
         }
@@ -1199,6 +1205,7 @@ void loop() {
             alarm.deactivate();
             alarm.buzz(false);
             mode = STD_MODE_NORMAL;
+            updateCurrentFace();
         }
         // Krach machen...
         if (rtc.getSeconds() % 2 == 0) {
@@ -1261,6 +1268,7 @@ void doubleExtModePressed() {
     while (hoursPlusButton.pressed());
     mode = EXT_MODE_START;
     setDisplayToOn();
+    updateCurrentFace();
     DEBUG_PRINTLN(F("Entering EXT_MODEs"));
     DEBUG_FLUSH();
 }
@@ -1418,6 +1426,7 @@ void manageNewDCF77Data() {
             if (mode == STD_MODE_BLANK) {
                 mode = STD_MODE_NORMAL;
                 setDisplayToOn();
+                updateCurrentFace();
             }
         #endif
     } else {
@@ -1485,6 +1494,7 @@ void goToNight() {
     lastMode = mode;
     mode = STD_MODE_NIGHT;
     setDisplayToOff();
+    updateCurrentFace();
 }
 
 /**
@@ -1493,6 +1503,7 @@ void goToNight() {
 void leaveFromNight() {
     mode = lastMode;
     setDisplayToOn();
+    updateCurrentFace();
 }
 
 /**
@@ -1514,6 +1525,7 @@ void setDisplayToBlank() {
         lastMode = mode;
         mode = STD_MODE_BLANK;
         setDisplayToOff();
+        updateCurrentFace();
     }
 }
 
@@ -1524,6 +1536,7 @@ void setDisplayToResume() {
     if (mode == STD_MODE_BLANK) {
         mode = lastMode;
         setDisplayToOn();
+        updateCurrentFace();
     }
 }
 

@@ -8,16 +8,17 @@ void ClockFaceLdrMode::writeToMatrix(word* matrix) {
     }
 }
 
-void ClockFaceLdrMode::onMinutePlus() {
+void ClockFaceLdrMode::toggleLdrMode() {
     _ctx->settings->setUseLdr(!_ctx->settings->getUseLdr());
     if (!_ctx->settings->getUseLdr()) {
         _ctx->ledDriver->setBrightness(50);
     }
 }
 
+void ClockFaceLdrMode::onMinutePlus() {
+    toggleLdrMode();
+}
+
 void ClockFaceLdrMode::onHourPlus() {
-    _ctx->settings->setUseLdr(!_ctx->settings->getUseLdr());
-    if (!_ctx->settings->getUseLdr()) {
-        _ctx->ledDriver->setBrightness(50);
-    }
+    toggleLdrMode();
 }

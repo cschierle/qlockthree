@@ -1,10 +1,9 @@
 #pragma once
-#include "ClockFace.h"
+#include "ClockFaceNormal.h"
 
-class ClockFaceTimeSet : public ClockFace {
+class ClockFaceTimeSet : public ClockFaceNormal {
 public:
-    explicit ClockFaceTimeSet(ClockContext* ctx) : ClockFace(ctx) {}
-    void writeToMatrix(word* matrix) override;
+    explicit ClockFaceTimeSet(ClockContext* ctx) : ClockFaceNormal(ctx) {}
     void onMinutePlus() override;
     void onHourPlus() override;
 };

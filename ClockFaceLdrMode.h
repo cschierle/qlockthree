@@ -8,4 +8,6 @@ public:
     void writeToMatrix(word* matrix) override;
     void onMinutePlus() override;
     void onHourPlus() override;
+private:
+    void toggleLdrMode();
 };

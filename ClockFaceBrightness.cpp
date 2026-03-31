@@ -15,8 +15,7 @@ void ClockFaceBrightness::onMinutePlus() {
 #endif
     byte b = _ctx->settings->getBrightness();
     if ((!_ctx->settings->getUseLdr()) && (b < 100)) {
-        b += 10;
-        if (b > 100) b = 100;
+        b = min((int)b + 10, 100);
         _ctx->settings->setBrightness(b);
         _ctx->settings->saveToEEPROM();
         _ctx->ledDriver->setBrightness(b);
@@ -27,12 +26,11 @@ void ClockFaceBrightness::onHourPlus() {
 #ifdef AUTO_JUMP_TO_TIME
     *_ctx->jumpToTime = _ctx->settings->getJumpToTime();
 #endif
-    int i = _ctx->settings->getBrightness();
-    if ((!_ctx->settings->getUseLdr()) && (i > 1)) {
-        i -= 10;
-        if (i < 1) i = 1;
-        _ctx->settings->setBrightness((byte)i);
+    byte b = _ctx->settings->getBrightness();
+    if ((!_ctx->settings->getUseLdr()) && (b > 1)) {
+        b = max((int)b - 10, 1);
+        _ctx->settings->setBrightness(b);
         _ctx->settings->saveToEEPROM();
-        _ctx->ledDriver->setBrightness((byte)i);
+        _ctx->ledDriver->setBrightness(b);
     }
 }

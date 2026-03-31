@@ -2,7 +2,7 @@
 
 void ClockFaceDate::writeToMatrix(word* matrix) {
 #ifdef EVENTDAY
-    char evSym = -1;
+    int evSym = -1;
     for (byte i = 0; i < sizeof(eventdayObject)/sizeof(EventdayObject); i++) {
         if ( (pgm_read_byte_near(&eventdayObject[i].day) == _ctx->rtc->getDate()) &&
              (pgm_read_byte_near(&eventdayObject[i].month) == _ctx->rtc->getMonth()) ) {

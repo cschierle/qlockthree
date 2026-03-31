@@ -41,7 +41,7 @@ inline void write4SmallDigits(word* matrix, byte firstNumber, byte secondNumber)
     }
 }
 #ifdef EVENTDAY
-inline void writeEventSymbol(word* matrix, char eventdaySymbol) {
+inline void writeEventSymbol(word* matrix, int eventdaySymbol) {
     for (byte i = 0; i < 10; i++) {
         matrix[i] |= pgm_read_word_near(&(eventdayObject[eventdaySymbol].symbol[i])) << 5;
     }
