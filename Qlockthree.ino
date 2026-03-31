@@ -247,6 +247,35 @@
 #ifdef EVENTDAY
     #include "Ereignisse.h"
 #endif
+#include "ClockModes.h"
+#include "ClockContext.h"
+#include "ClockFace.h"
+#include "MatrixWriter.h"
+#include "ClockFaceNormal.h"
+#include "ClockFaceTimeSet.h"
+#include "ClockFaceAlarmMode.h"
+#include "ClockFaceSeconds.h"
+#include "ClockFaceDate.h"
+#include "ClockFaceBrightness.h"
+#include "ClockFaceBlank.h"
+#include "ClockFaceColorful.h"
+#ifdef COUNTDOWN
+#include "ClockFaceCountdown.h"
+#endif
+#include "ClockFaceMenuLabel.h"
+#include "ClockFaceLdrMode.h"
+#include "ClockFaceCorners.h"
+#include "ClockFaceEnableAlarm.h"
+#include "ClockFaceDcfInverted.h"
+#include "ClockFaceLanguage.h"
+#include "ClockFaceTimeShift.h"
+#include "ClockFaceJumpTimeout.h"
+#include "ClockFaceNightTime.h"
+#include "ClockFaceTest.h"
+#ifdef DCF77_SHOW_TIME_SINCE_LAST_SYNC
+#include "ClockFaceDcfSync.h"
+#endif
+#include "ClockFaceDcfDebug.h"
 
 #define FIRMWARE_VERSION "V 3.4.9b4 vom 17.04.2016"
 
@@ -527,50 +556,6 @@ Button hoursPlusButton(PIN_H_PLUS, BUTTONS_PRESSING_AGAINST);
 Button extModeDoubleButton(PIN_M_PLUS, PIN_H_PLUS, BUTTONS_PRESSING_AGAINST);
 Button modeChangeButton(PIN_MODE, BUTTONS_PRESSING_AGAINST);
 
-/**
- * Die Standard-Modi.
- */
-#define STD_MODE_NORMAL     0
-#define STD_MODE_ALARM      1
-#define STD_MODE_SECONDS    2
-#define STD_MODE_COUNTDOWN  3
-#define STD_MODE_DATE       4
-#define STD_MODE_BRIGHTNESS 5
-#define STD_MODE_BLANK      6
-#define STD_MODE_COLORFUL   7
-#define STD_MODE_COUNT      8
-// nicht manuell zu erreichender Modus...
-#define STD_MODE_NIGHT      9
-
-
-
-/**
- * Die erweiterten Modi.
- */
-#define EXT_MODE_START           10
-
-#define EXT_MODE_MAIN_SETTINGS_START  10
-#define EXT_MODE_LDR_MODE        11
-#define EXT_MODE_CORNERS         12
-#define EXT_MODE_ENABLE_ALARM    13
-#define EXT_MODE_DCF_IS_INVERTED 14
-#define EXT_MODE_LANGUAGE        15
-
-#define EXT_MODE_TIME_SETTINGS_START  16
-#define EXT_MODE_TIMESET         17
-#define EXT_MODE_TIME_SHIFT      18
-#define EXT_MODE_JUMP_TIMEOUT    19
-#define EXT_MODE_OFFTIME_MOFR         20
-#define EXT_MODE_ONTIME_MOFR          21
-#define EXT_MODE_OFFTIME_SASO         22
-#define EXT_MODE_ONTIME_SASO          23
-
-#define EXT_MODE_TEST_DEBUG_START     24
-#define EXT_MODE_TEST            25
-#define EXT_MODE_DCF_SYNC        26
-#define EXT_MODE_DCF_DEBUG       27
-#define EXT_MODE_COUNT           28
-
 // Startmode...
 byte mode = STD_MODE_NORMAL;
 // Merker fuer den Modus vor der Abschaltung...
@@ -593,12 +578,43 @@ byte x, y;
 word frames = 0;
 unsigned long lastFpsCheck = 0;
 
-struct RgbColor {
-    unsigned char R;
-    unsigned char G;
-    unsigned char B;
-};
 RgbColor currentColor = { 255, 255, 255 };
+
+ClockContext ctx;
+
+ClockFaceNormal      normalFace(&ctx);
+ClockFaceTimeSet     timeSetFace(&ctx);
+ClockFaceAlarmMode   alarmModeFace(&ctx);
+ClockFaceSeconds     secondsFace(&ctx);
+ClockFaceDate        dateFace(&ctx);
+ClockFaceBrightness  brightnessFace(&ctx);
+ClockFaceBlank       blankFace(&ctx);
+ClockFaceColorful    colorfulFace(&ctx);
+#ifdef COUNTDOWN
+ClockFaceCountdown   countdownFace(&ctx);
+#endif
+ClockFaceMenuLabel   mainSettingsFace(&ctx, 'M', 'A', 'I', 'N', EXT_MODE_TIME_SETTINGS_START);
+ClockFaceMenuLabel   timeSettingsFace(&ctx, 'T', 'I', 'M', 'E', EXT_MODE_TEST_DEBUG_START);
+ClockFaceMenuLabel   testDebugFace(&ctx,    'T', 'E', 'S', 'T', STD_MODE_NORMAL);
+ClockFaceLdrMode     ldrModeFace(&ctx);
+ClockFaceCorners     cornersFace(&ctx);
+ClockFaceEnableAlarm enableAlarmFace(&ctx);
+ClockFaceDcfInverted dcfInvertedFace(&ctx);
+ClockFaceLanguage    languageFace(&ctx);
+ClockFaceTimeShift   timeShiftFace(&ctx);
+ClockFaceJumpTimeout jumpTimeoutFace(&ctx);
+ClockFaceNightTime   offtimeMoFrFace(&ctx, 0);
+ClockFaceNightTime   ontimeMoFrFace(&ctx, 1);
+ClockFaceNightTime   offtimeSaSoFace(&ctx, 2);
+ClockFaceNightTime   ontimeSaSoFace(&ctx, 3);
+ClockFaceTest        testFace(&ctx);
+#ifdef DCF77_SHOW_TIME_SINCE_LAST_SYNC
+ClockFaceDcfSync     dcfSyncFace(&ctx);
+#endif
+ClockFaceDcfDebug    dcfDebugFace(&ctx);
+
+ClockFace* faces[EXT_MODE_COUNT];
+ClockFace* currentFace;
 
 // Eigene Variablendeklaration
 #ifdef EVENTDAY
@@ -717,6 +733,52 @@ int freeRam() {
     int v;
     return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 #endif
+}
+
+void initFaces() {
+    faces[STD_MODE_NORMAL]              = &normalFace;
+    faces[STD_MODE_ALARM]               = &alarmModeFace;
+    faces[STD_MODE_SECONDS]             = &secondsFace;
+    faces[STD_MODE_COUNTDOWN]           =
+#ifdef COUNTDOWN
+        &countdownFace;
+#else
+        &normalFace;
+#endif
+    faces[STD_MODE_DATE]                = &dateFace;
+    faces[STD_MODE_BRIGHTNESS]          = &brightnessFace;
+    faces[STD_MODE_BLANK]               = &blankFace;
+    faces[STD_MODE_COLORFUL]            = &colorfulFace;
+    faces[STD_MODE_COUNT]               = &normalFace;
+    faces[STD_MODE_NIGHT]               = &blankFace;
+    faces[EXT_MODE_MAIN_SETTINGS_START] = &mainSettingsFace;
+    faces[EXT_MODE_LDR_MODE]            = &ldrModeFace;
+    faces[EXT_MODE_CORNERS]             = &cornersFace;
+    faces[EXT_MODE_ENABLE_ALARM]        = &enableAlarmFace;
+    faces[EXT_MODE_DCF_IS_INVERTED]     = &dcfInvertedFace;
+    faces[EXT_MODE_LANGUAGE]            = &languageFace;
+    faces[EXT_MODE_TIME_SETTINGS_START] = &timeSettingsFace;
+    faces[EXT_MODE_TIMESET]             = &timeSetFace;
+    faces[EXT_MODE_TIME_SHIFT]          = &timeShiftFace;
+    faces[EXT_MODE_JUMP_TIMEOUT]        = &jumpTimeoutFace;
+    faces[EXT_MODE_OFFTIME_MOFR]        = &offtimeMoFrFace;
+    faces[EXT_MODE_ONTIME_MOFR]         = &ontimeMoFrFace;
+    faces[EXT_MODE_OFFTIME_SASO]        = &offtimeSaSoFace;
+    faces[EXT_MODE_ONTIME_SASO]         = &ontimeSaSoFace;
+    faces[EXT_MODE_TEST_DEBUG_START]    = &testDebugFace;
+    faces[EXT_MODE_TEST]                = &testFace;
+    faces[EXT_MODE_DCF_SYNC]            =
+#ifdef DCF77_SHOW_TIME_SINCE_LAST_SYNC
+        &dcfSyncFace;
+#else
+        &testFace;
+#endif
+    faces[EXT_MODE_DCF_DEBUG]           = &dcfDebugFace;
+}
+
+void updateCurrentFace() {
+    currentFace = faces[mode];
+    currentFace->onEnter();
 }
 
 /**
@@ -885,70 +947,36 @@ void setup() {
     // Display einschalten...
     ledDriver.wakeUp();
     ledDriver.setBrightness(settings.getBrightness());
-    }
 
-/*
- * Schreibroutinen für Buchstaben und Zahlen
- */
-void write1xyStab(char char1, byte posx, byte posy) {
-    for (byte i = 0; i < 5; i++) {
-        matrix[posy + i] |= pgm_read_byte_near(&(staben[char1 - 'A'][i])) << posx;
-    }
-}
-
-void write2yStaben(char char1, char char2, byte posy) {
-    write1xyStab(char1, 11, posy);
-    write1xyStab(char2,  5, posy);
-}
-
-void write2Staben(char char1, char char2) {
-    write2yStaben(char1, char2, 2);
-}
-
-void write4Staben(char char1, char char2, char char3, char char4) {
-    write2yStaben(char1, char2, 0);
-    write2yStaben(char3, char4, 5);
-}
-
-void write1xyDigit(byte number, byte posx, byte posy) {
-    for (byte i = 0; i < 7; i++) {
-        matrix[posy + i] |= pgm_read_byte_near(&(ziffern[number][i])) << posx;
-    }
-}
-
-void write2yDigits(byte number, byte posy) {
-    write1xyDigit(number / 10, 11, posy);
-    write1xyDigit(number % 10,  5, posy);
-}
-
-void write4SmallDigits(byte firstNumber, byte secondNumber) {
-    for (byte i = 0; i < 5; i++) {            
-        matrix[0 + i] |= pgm_read_byte_near(&(ziffernKlein[firstNumber / 10][i])) << 12;
-        matrix[0 + i] |= pgm_read_byte_near(&(ziffernKlein[firstNumber % 10][i])) << 7;
-        matrix[5 + i] |= pgm_read_byte_near(&(ziffernKlein[secondNumber / 10][i])) << 12;
-        matrix[5 + i] |= pgm_read_byte_near(&(ziffernKlein[secondNumber % 10][i])) << 7;
-    }
-}
-
-#ifdef EVENTDAY
-    void writeEventSymbol() {
-        for (byte i = 0; i < 10; i++) { 
-            matrix[i] |= pgm_read_word_near(&(eventdayObject[eventdaySymbol].symbol[i])) << 5;
-        }
-    }
+    // Wire up ClockContext
+    ctx.settings = &settings;
+    ctx.renderer = &renderer;
+    ctx.ledDriver = &ledDriver;
+    ctx.rtc = &rtc;
+    ctx.dcf77 = &dcf77;
+    ctx.alarm = &alarm;
+    ctx.mode = &mode;
+    ctx.lastMode = &lastMode;
+    ctx.helperSeconds = &helperSeconds;
+    ctx.needsUpdateFromRtc = &needsUpdateFromRtc;
+    ctx.x = &x;
+    ctx.currentColor = &currentColor;
+#ifdef AUTO_JUMP_TO_TIME
+    ctx.jumpToTime = &jumpToTime;
 #endif
+#ifdef COUNTDOWN
+    ctx.countdown = &countdown;
+    ctx.eventdaySymbol = &eventdaySymbol;
+#endif
+    ctx.brightnessToDisplay = &brightnessToDisplay;
+    initFaces();
+    updateCurrentFace();
+    }
 
 /**
  * loop() wird endlos auf alle Ewigkeit vom Microcontroller durchlaufen
  */
 void loop() {
-    //
-    // Variablendeklaration (temporär)
-    //
-    unsigned int ui_min;
-    byte b_hour, b_min;
-    char c_TimeShift;
-
    //Serial.println("T");
     #ifdef DISABLERTCINT
       if(millis()%1000==0){
@@ -1065,254 +1093,7 @@ void loop() {
         renderer.clearScreenBuffer(matrix);
         // reset color to white
         ledDriver.setColor(255,255,255);
-        switch (mode) {
-            case STD_MODE_NORMAL:
-            case EXT_MODE_TIMESET:
-                renderer.setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), settings.getLanguage(), matrix);
-                renderer.setCorners(rtc.getMinutes(), settings.getRenderCornersCw(), matrix);
-                if (settings.getRandomizeColors()) {
-                    if (helperSeconds == 0) {
-                        currentColor.R = random(0,255);
-                        currentColor.G = random(0,255);
-                        currentColor.B = random(0,255);
-                    }
-                    ledDriver.setColor(currentColor.R, currentColor.G, currentColor.B);
-                }
-                break;
-            case EXT_MODE_TIME_SHIFT:
-                c_TimeShift = settings.getTimeShift();
-                if (c_TimeShift < 0) {
-                    for (byte x = 0; x < 3; x++) {
-                        ledDriver.setPixelInScreenBuffer(x, 1, matrix);
-                    }
-                } else if (c_TimeShift > 0) {
-                    for (byte x = 0; x < 3; x++) {
-                        ledDriver.setPixelInScreenBuffer(x, 1, matrix);
-                    }
-                    for (byte y = 0; y < 3; y++) {
-                        ledDriver.setPixelInScreenBuffer(1, y, matrix);
-                    }
-                }
-                c_TimeShift = abs(c_TimeShift);
-                write1xyDigit(c_TimeShift % 10, 5, 3);
-                if (c_TimeShift > 9) {
-                    write1xyDigit(1, 10, 3);
-                }
-                break;
-            case STD_MODE_ALARM:
-                if (alarm.getShowAlarmTimeTimer() == 0) {
-                    renderer.setMinutes(rtc.getHours() + settings.getTimeShift(), rtc.getMinutes(), settings.getLanguage(), matrix);
-                    renderer.setCorners(rtc.getMinutes(), settings.getRenderCornersCw(), matrix);
-                    renderer.activateAlarmLed(matrix);
-                } else {
-                    renderer.setMinutes(alarm.getHours() + settings.getTimeShift(), alarm.getMinutes(), settings.getLanguage(), matrix);
-                    renderer.setCorners(alarm.getMinutes(), settings.getRenderCornersCw(), matrix);
-                    renderer.cleanWordsForAlarmSettingMode(settings.getLanguage(), matrix); // ES IST weg
-                    if (alarm.getShowAlarmTimeTimer() % 2 == 0) {
-                        renderer.activateAlarmLed(matrix);
-                    }
-                    alarm.decShowAlarmTimeTimer();
-                }
-                break;
-            case STD_MODE_DATE:
-                #ifdef EVENTDAY
-                    /**
-                     * Es wird geprüft, ob der heutige Tag ein Ereignis ist und das entsprechend
-                     * definierte Symbol dazu auf der Datumsanzeige ausgegeben.
-                     * Ereignisse werden in der Ereignisse.h definiert.
-                     */  
-                    eventdaySymbol = -1;
-                    for (byte i = 0; i < sizeof(eventdayObject)/sizeof(EventdayObject); i++) {
-                        if ( (pgm_read_byte_near(&eventdayObject[i].day) == rtc.getDate()) && (pgm_read_byte_near(&eventdayObject[i].month) == rtc.getMonth()) ) {
-                            eventdaySymbol = i;
-                            break;
-                        }
-                    }      
-                    if (eventdaySymbol != -1) {
-                        // Anzeige des Geburtstagssymbols
-                        writeEventSymbol();
-                    } else
-                #endif
-                {
-                    // Anzeige des Datums
-                    write4SmallDigits(rtc.getDate(), rtc.getMonth());
-                    ledDriver.setPixelInScreenBuffer(10, 4, matrix);
-                    ledDriver.setPixelInScreenBuffer(10, 9, matrix);
-                }
-                 break;
-            #ifdef COUNTDOWN
-                case STD_MODE_COUNTDOWN:
-                    /**
-                     * Dieser Modus zeigt den Countdown zu einem Ereignis an.
-                     * Ereignisse werden in der Ereignisse.h definiert.
-                     */ 
-                    if (countdown >= 60) {
-                        // Anzeige des Countdowns (Minuten und Sekunden)
-                        write4SmallDigits(countdown / 60, countdown % 60);
-                        ledDriver.setPixelInScreenBuffer(10, 1, matrix);
-                        ledDriver.setPixelInScreenBuffer(10, 3, matrix);
-                    } else if (countdown >= 0) {
-                        // Anzeige des Countdowns (nur Sekunden)
-                        write2yDigits(countdown, 1);
-                    } else if (countdown > -COUNTDOWN_BLINK_DURATION) {
-                        // Anzeige des Symbols blinkend im Sekundentakt
-                        if (countdown % 2) {
-                            writeEventSymbol();
-                        }
-                    } else {
-                        // Rücksprung auf Uhrzeit
-                        mode = STD_MODE_NORMAL;
-                        lastMode = mode;
-                    }
-                    break;
-            #endif
-            case EXT_MODE_MAIN_SETTINGS_START:
-                write4Staben('M', 'A', 'I', 'N');
-                break;
-            case EXT_MODE_TIME_SETTINGS_START:
-                write4Staben('T', 'I', 'M', 'E');
-                break;
-            case EXT_MODE_TEST_DEBUG_START:
-                write4Staben('T', 'E', 'S', 'T');
-                break;
-            case EXT_MODE_JUMP_TIMEOUT:
-                write2yDigits(settings.getJumpToTime(), 3);
-                break;
-            case EXT_MODE_OFFTIME_MOFR:
-            case EXT_MODE_OFFTIME_SASO:
-                ledDriver.setPixelInScreenBuffer(10, 7, matrix);
-            case EXT_MODE_ONTIME_MOFR:
-            case EXT_MODE_ONTIME_SASO:
-                b_hour = getNightTimeStamp(mode)->getHours();
-                b_min = getNightTimeStamp(mode)->getMinutes();
-                write4SmallDigits(b_hour, b_min);
-                ledDriver.setPixelInScreenBuffer(10, 1, matrix);
-                ledDriver.setPixelInScreenBuffer(10, 3, matrix);
-                break; 
-            case STD_MODE_SECONDS:
-                write2yDigits(rtc.getSeconds(), 1);
-                break;
-            case EXT_MODE_LDR_MODE:
-                if (settings.getUseLdr()) {
-                    write1xyStab('A', 8, 2);
-                } else {
-                    write1xyStab('M', 8, 2);
-                }
-                break;
-            case STD_MODE_BLANK:
-            case STD_MODE_NIGHT:
-                break;
-            case STD_MODE_BRIGHTNESS:
-                brightnessToDisplay = map(settings.getBrightness(), 1, 100, 0, 9);
-                for (byte xb = 0; xb < brightnessToDisplay; xb++) {
-                    for (byte yb = 0; yb <= xb; yb++) {
-                        matrix[9 - yb] |= 1 << (14 - xb);
-                    }
-                }
-                break;
-            case STD_MODE_COLORFUL:
-                displayColorfulMenu();
-                break;
-            case EXT_MODE_CORNERS:
-                if (settings.getRenderCornersCw()) {
-                    write2Staben('C', 'W');
-                } else {
-                    write1xyStab('C', 8, 0);
-                    write2yStaben('C', 'W', 5);
-                }
-                break;
-            case EXT_MODE_ENABLE_ALARM:
-                if (settings.getEnableAlarm()) {
-                    write4Staben('A', 'L', 'E', 'N');
-                } else {
-                    write4Staben('A', 'L', 'D', 'A');
-                }
-                break;
-            case EXT_MODE_DCF_IS_INVERTED:
-                if (settings.getDcfSignalIsInverted()) {
-                    write4Staben('R', 'S', 'I', 'N');
-                } else {
-                    write4Staben('R', 'S', 'N', 'O');
-                }
-                break;
-            case EXT_MODE_LANGUAGE:
-                for (byte i = 0; i < 5; i++) {
-                    switch (settings.getLanguage()) {
-                        case LANGUAGE_DE_DE:
-                            write2Staben('D', 'E');
-                            break;
-                        /*case LANGUAGE_DE_SW:
-                            matrix[0 + i] |= pgm_read_byte_near(&(staben['D' - 'A'][i])) << 11;
-                            matrix[0 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 5;
-                            matrix[5 + i] |= pgm_read_byte_near(&(staben['S' - 'A'][i])) << 11;
-                            matrix[5 + i] |= pgm_read_byte_near(&(staben['W' - 'A'][i])) << 5;
-                            break;
-                        case LANGUAGE_DE_BA:
-                            matrix[0 + i] |= pgm_read_byte_near(&(staben['D' - 'A'][i])) << 11;
-                            matrix[0 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 5;
-                            matrix[5 + i] |= pgm_read_byte_near(&(staben['B' - 'A'][i])) << 11;
-                            matrix[5 + i] |= pgm_read_byte_near(&(staben['A' - 'A'][i])) << 5;
-                            break;
-                        case LANGUAGE_DE_SA:
-                            matrix[0 + i] |= pgm_read_byte_near(&(staben['D' - 'A'][i])) << 11;
-                            matrix[0 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 5;
-                            matrix[5 + i] |= pgm_read_byte_near(&(staben['S' - 'A'][i])) << 11;
-                            matrix[5 + i] |= pgm_read_byte_near(&(staben['A' - 'A'][i])) << 5;
-                            break;
-                        case LANGUAGE_CH:
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['C' - 'A'][i])) << 11;
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['H' - 'A'][i])) << 5;
-                            break;
-                        case LANGUAGE_EN:
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 11;
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['N' - 'A'][i])) << 5;
-                            break;
-                        case LANGUAGE_FR:
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['F' - 'A'][i])) << 11;
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['R' - 'A'][i])) << 5;
-                            break;
-                        case LANGUAGE_IT:
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['I' - 'A'][i])) << 11;
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['T' - 'A'][i])) << 5;
-                            break;
-                        case LANGUAGE_NL:
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['N' - 'A'][i])) << 11;
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['L' - 'A'][i])) << 5;
-                            break;
-                        case LANGUAGE_ES:
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['E' - 'A'][i])) << 11;
-                            matrix[2 + i] |= pgm_read_byte_near(&(staben['S' - 'A'][i])) << 5;
-                            break;*/
-                    }
-                }
-                break;
-            case EXT_MODE_TEST:
-                renderer.setCorners(helperSeconds % 5, settings.getRenderCornersCw(), matrix);
-                if (settings.getEnableAlarm()) {
-                    renderer.activateAlarmLed(matrix);
-                }
-                for (byte i = 0; i < 11; i++) {
-                    ledDriver.setPixelInScreenBuffer(x, i, matrix);
-                }
-                x++;
-                if (x > 10) {
-                    x = 0;
-                }
-                break;
-            #ifdef DCF77_SHOW_TIME_SINCE_LAST_SYNC
-                case EXT_MODE_DCF_SYNC:
-                    // Anzeige des letzten erfolgreichen DCF-Syncs (samplesOK) in Stunden:Minuten
-                    ui_min = dcf77.getDcf77LastSuccessSyncMinutes();
-                    write4SmallDigits(ui_min / 60, ui_min % 60);
-                    ledDriver.setPixelInScreenBuffer(10, 1, matrix);
-                    ledDriver.setPixelInScreenBuffer(10, 3, matrix);
-                break;
-            #endif
-            case EXT_MODE_DCF_DEBUG:
-                needsUpdateFromRtc = true;
-                renderer.setCorners(dcf77.getDcf77ErrorCorner(settings.getDcfSignalIsInverted()), settings.getRenderCornersCw(), matrix);
-                break;
-        }
+        currentFace->writeToMatrix(matrix);
       
         // Update mit onChange = true, weil sich hier (aufgrund needsUpdateFromRtc) immer was geaendert hat.
         // Entweder weil wir eine Sekunde weiter sind, oder weil eine Taste gedrueckt wurde.
@@ -1450,17 +1231,6 @@ void loop() {
       manageNewDCF77Data();
 }
 
-void displayColorfulMenu() {
-    write2yStaben('C', 'O', 0);
-    if (settings.getRandomizeColors()) {
-        ledDriver.setColor(255, 255, 0); 
-        write2yStaben('O', 'N', 5);
-    } else {
-        ledDriver.setColor(255,255,255);
-        write2yStaben('O', 'F', 5);
-    }
-}
-
 /**
  * Was soll ausgefuehrt werden, wenn die H+ und M+ -Taste zusammen gedrueckt wird?
  */
@@ -1536,11 +1306,6 @@ void modePressed() {
     if (mode == EXT_MODE_COUNT) {
         mode = STD_MODE_NORMAL;
     }
-    if (mode == STD_MODE_ALARM) {
-        // wenn auf Alarm gewechselt wurde, fuer 10 Sekunden die
-        // Weckzeit anzeigen.
-        alarm.setShowAlarmTimeTimer(10);
-    }
 
     #ifdef AUTO_JUMP_TO_TIME
         switch (mode) {
@@ -1574,6 +1339,7 @@ void modePressed() {
 
     // Werte speichern (die Funktion speichert nur bei geaenderten Werten)...
     settings.saveToEEPROM();
+    updateCurrentFace();
 }
 
 /**
@@ -1585,85 +1351,8 @@ void hourPlusPressed() {
     DEBUG_PRINTLN(F("Hours plus pressed..."));
     DEBUG_FLUSH();
 
-    switch (mode) {
-        case EXT_MODE_MAIN_SETTINGS_START:
-            mode = EXT_MODE_TIME_SETTINGS_START;
-            break;
-        case EXT_MODE_TIME_SETTINGS_START:
-            mode = EXT_MODE_TEST_DEBUG_START;
-            break;
-        case EXT_MODE_TEST_DEBUG_START:
-            mode = STD_MODE_NORMAL;
-            break;
-        case EXT_MODE_TIMESET:
-            rtc.incHours();
-            rtc.setSeconds(0);
-            rtc.writeTime();
-            rtc.readTime();
-            helperSeconds = 0;
-            DEBUG_PRINT(F("H is now "));
-            DEBUG_PRINTLN(rtc.getHours());
-            DEBUG_FLUSH();
-            break;
-        case EXT_MODE_TIME_SHIFT:
-            if (settings.getTimeShift() > -13) {
-                settings.setTimeShift(settings.getTimeShift() - 1);
-            }
-            break;
-        case EXT_MODE_JUMP_TIMEOUT:
-            if (settings.getJumpToTime() > 0) {
-                settings.setJumpToTime(settings.getJumpToTime() - 1);
-            }
-            break;
-        case EXT_MODE_OFFTIME_MOFR:
-        case EXT_MODE_ONTIME_MOFR:
-        case EXT_MODE_OFFTIME_SASO:
-        case EXT_MODE_ONTIME_SASO:
-            getNightTimeStamp(mode)->incHours();
-            break;
-        case STD_MODE_ALARM:
-            alarm.incHours();
-            alarm.setShowAlarmTimeTimer(10);
-            DEBUG_PRINT(F("A is now "));
-            DEBUG_PRINTLN(alarm.asString());
-            DEBUG_FLUSH();
-            break;
-        case STD_MODE_BRIGHTNESS:
-            #ifdef AUTO_JUMP_TO_TIME
-                // RESET counter
-                jumpToTime = settings.getJumpToTime();
-            #endif
-            setDisplayDarker();
-            break;
-        case EXT_MODE_LDR_MODE:
-            settings.setUseLdr(!settings.getUseLdr());
-            if (!settings.getUseLdr()) {
-                ledDriver.setBrightness(50);
-            }
-            DEBUG_PRINT(F("LDR is now "));
-            DEBUG_PRINTLN(settings.getUseLdr());
-            DEBUG_FLUSH();
-            break;
-        case EXT_MODE_CORNERS:
-            settings.setRenderCornersCw(!settings.getRenderCornersCw());
-            break;
-        case EXT_MODE_ENABLE_ALARM:
-            settings.setEnableAlarm(!settings.getEnableAlarm());
-            break;
-        case EXT_MODE_DCF_IS_INVERTED:
-            settings.setDcfSignalIsInverted(!settings.getDcfSignalIsInverted());
-            break;
-        case EXT_MODE_LANGUAGE:
-            if (settings.getLanguage() == 0) {
-                settings.setLanguage(LANGUAGE_COUNT);
-            } else {
-                settings.setLanguage(settings.getLanguage() - 1);
-            }
-            break;
-        case STD_MODE_COLORFUL:
-            settings.setRandomizeColors(!settings.getRandomizeColors());
-            break;
-    }
+    currentFace->onHourPlus();
+    updateCurrentFace();
 }
 
 /**
@@ -1675,84 +1364,8 @@ void minutePlusPressed() {
     DEBUG_PRINTLN(F("Minutes plus pressed..."));
     DEBUG_FLUSH();
 
-    switch (mode) {
-        case EXT_MODE_MAIN_SETTINGS_START:
-            mode = EXT_MODE_TIME_SETTINGS_START;
-            break;
-        case EXT_MODE_TIME_SETTINGS_START:
-            mode = EXT_MODE_TEST_DEBUG_START;
-            break;
-        case EXT_MODE_TEST_DEBUG_START:
-            mode = STD_MODE_NORMAL;
-            break;
-        case EXT_MODE_TIMESET:
-            rtc.incMinutes();
-            rtc.setSeconds(0);
-            rtc.writeTime();
-            rtc.readTime();
-            helperSeconds = 0;
-            DEBUG_PRINT(F("M is now "));
-            DEBUG_PRINTLN(rtc.getMinutes());
-            DEBUG_FLUSH();
-            break;
-        case EXT_MODE_TIME_SHIFT:
-            if (settings.getTimeShift() < 13) {
-                settings.setTimeShift(settings.getTimeShift() + 1);
-            }
-            break;
-        case EXT_MODE_JUMP_TIMEOUT:
-            if (settings.getJumpToTime() < 99) {
-                settings.setJumpToTime(settings.getJumpToTime() + 1);
-            }
-            break;
-        case EXT_MODE_OFFTIME_MOFR:
-        case EXT_MODE_ONTIME_MOFR:
-        case EXT_MODE_OFFTIME_SASO:
-        case EXT_MODE_ONTIME_SASO:
-            getNightTimeStamp(mode)->incMinutes();
-            break;
-        case STD_MODE_ALARM:
-            alarm.incMinutes();
-            alarm.setShowAlarmTimeTimer(10);
-            DEBUG_PRINT(F("A is now "));
-            DEBUG_PRINTLN(alarm.asString());
-            DEBUG_FLUSH();
-            break;
-        case STD_MODE_BRIGHTNESS:
-            #ifdef AUTO_JUMP_TO_TIME
-                // RESET counter
-                jumpToTime = settings.getJumpToTime();
-            #endif
-            setDisplayBrighter();
-            break;
-        case EXT_MODE_LDR_MODE:
-            settings.setUseLdr(!settings.getUseLdr());
-            if (!settings.getUseLdr()) {
-                ledDriver.setBrightness(50);
-            }
-            DEBUG_PRINT(F("LDR is now "));
-            DEBUG_PRINTLN(settings.getUseLdr());
-            DEBUG_FLUSH();
-            break;
-        case EXT_MODE_CORNERS:
-            settings.setRenderCornersCw(!settings.getRenderCornersCw());
-            break;
-        case EXT_MODE_ENABLE_ALARM:
-            settings.setEnableAlarm(!settings.getEnableAlarm());
-            break;
-        case EXT_MODE_DCF_IS_INVERTED:
-            settings.setDcfSignalIsInverted(!settings.getDcfSignalIsInverted());
-            break;
-        case EXT_MODE_LANGUAGE:
-            settings.setLanguage(settings.getLanguage() + 1);
-            if (settings.getLanguage() > LANGUAGE_COUNT) {
-                settings.setLanguage(0);
-            }
-            break;
-        case STD_MODE_COLORFUL:
-            settings.setRandomizeColors(!settings.getRandomizeColors());
-            break;
-    }
+    currentFace->onMinutePlus();
+    updateCurrentFace();
 }
 
 /**
