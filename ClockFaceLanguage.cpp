@@ -1,13 +1,11 @@
 #include "ClockFaceLanguage.h"
 
 void ClockFaceLanguage::writeToMatrix(word* matrix) {
-    for (byte i = 0; i < 5; i++) {
-        switch (_ctx->settings->getLanguage()) {
-            case LANGUAGE_DE_DE:
-                write2Staben(matrix, 'D', 'E');
-                break;
-            /*case LANGUAGE_DE_SW: ... (commented out in original) */
-        }
+    switch (_ctx->settings->getLanguage()) {
+        case LANGUAGE_DE_DE:
+            write2Staben(matrix, 'D', 'E');
+            break;
+        /*case LANGUAGE_DE_SW: ... (commented out in original) */
     }
 }
 

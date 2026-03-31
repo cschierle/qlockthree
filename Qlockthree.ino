@@ -1078,7 +1078,10 @@ void loop() {
                         if (helperSeconds == 0) {
                             CheckCountdown();
                             if (countdown >= 0) {
-                                mode = STD_MODE_COUNTDOWN;
+                                if (mode != STD_MODE_COUNTDOWN) {
+                                    mode = STD_MODE_COUNTDOWN;
+                                    updateCurrentFace();
+                                }
                             }
                         }   
                     #endif
@@ -1094,6 +1097,10 @@ void loop() {
         // reset color to white
         ledDriver.setColor(255,255,255);
         currentFace->writeToMatrix(matrix);
+        // A face may change mode internally (e.g. countdown expiry); sync currentFace if needed.
+        if (currentFace != faces[mode]) {
+            updateCurrentFace();
+        }
       
         // Update mit onChange = true, weil sich hier (aufgrund needsUpdateFromRtc) immer was geaendert hat.
         // Entweder weil wir eine Sekunde weiter sind, oder weil eine Taste gedrueckt wurde.
